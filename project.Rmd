@@ -1,0 +1,83 @@
+Predicting Exercise
+========================================================
+
+Dongyoon Wee
+
+In order to improve the exercise efficiency, the quality and the amount of exercises are important. As a means of measuring, devices such as Jawbone Up, Nike FuelBand, and Fitbit can be used to collect the data about personal activity inexpensively. In this project, we use the data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. Based on those data, the project is to predict the manner in which they did the exercise. 
+
+###1. Data loading 
+
+The data used for this project is divided into two data: Training data, Test data. 
+
+1) The training data for this project are available here: 
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+2) The test data are available here: 
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+```{r}
+library(caret)
+library(randomForest)
+
+setInternet2(TRUE)
+temp <- tempfile()
+download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv",temp)
+training <- read.csv(temp)
+unlink(temp)
+download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv",temp)
+testing <- read.csv(temp)
+unlink(temp)
+```
+
+###2. Data processing
+
+There are 160 variables including "classe", which represents the kind of exercises. Among those, with data proprecessing, only the principal variables should be chosen as the predictors. 
+
+- Our goal is predicing the exercise, with accelerometer data which is numeric data. Thus the variables which don't have numeric data should be eliminated first. Then, when we summarize the data, we can recognize that there are many variables which has a number of NA's, and the number is exactly same. Thus those variables should be eliminated as well.
+- After the preprocessing of the data, there are 27 remaining variables, except "classe" variable. 
+- In order to cross-validate, the data is divided into training dataset and pretesting dataset. 
+
+```{r}
+summary(training)
+select_out <- NULL
+for(i in 1:159)
+{
+  if((class(training[,i])!="numeric")|(any(is.na(training[,i]))))
+  {
+    select_out <- c(select_out,i)
+  }
+}
+predictors_training <- training[,-select_out]
+predictors_testing <- testing[,-select_out]
+
+training <- training[,-select_out]
+testing <- testing[,-select_out]
+
+set.seed(32334)
+
+inTrain <- createDataPartition(y=training$classe, p=0.7, list=FALSE)
+
+pretesting <- training[-inTrain,]
+training <- training[inTrain,]
+
+```
+
+###3. Training & prediction
+
+With 27 variables, the prediction model is established. There are many machine learning algorithms to predict, and we use "randomForest" algorithm, which shows the highest accuracy of 99.48%. When we execute the cross-validating, accuracy of the model is 99.25%. Based on the cross-validating result, we can assume that the accuracy of the model will be between 99.00% and 99.46% with 95% confidence. In other word, in-sample error is 0.52% whereas out of sample error is expected to be 0.75%.
+
+```{r}
+model <- randomForest(classe ~ .,data=training)
+model
+preTest <- predict(model, pretesting)
+confusionMatrix(pretesting$classe, preTest)
+```
+
+###4. Conclusion
+
+With the established model above, we apply testing dataset, in order to test our model. The following shows the result and the result is correct 100%. 
+
+```{r}
+prediction <- predict(model, testing)
+prediction
+```
